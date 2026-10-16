@@ -8,7 +8,7 @@ A tiny **GZDoom / Doom II** shooter mod.
 - The boss starts as **Bahon** with 200 HP.
 - When Bahon drops below 50% health, the actor is replaced by a **Leonardo DiCaprio** phase with 100 HP.
 - Uses Doom II's normal weapon and projectile behavior, with custom PNG sprites.
-- Includes a generated preview in `docs/preview.png`.
+- A ready-to-run build is included at `dist/bahon-shooter.pk3`.
 
 ## Run it
 
@@ -20,10 +20,10 @@ You need:
 Then run:
 
 ```bash
-gzdoom -iwad DOOM2.WAD -file bahon-shooter.pk3 +map MAP01
+gzdoom -iwad DOOM2.WAD -file dist/bahon-shooter.pk3 +map MAP01
 ```
 
-On Windows you can also drag `bahon-shooter.pk3` onto `gzdoom.exe`, then select Doom II and start MAP01.
+On Windows you can also drag `dist/bahon-shooter.pk3` onto `gzdoom.exe`, then select Doom II and start MAP01.
 
 ## Project layout
 
@@ -32,7 +32,7 @@ On Windows you can also drag `bahon-shooter.pk3` onto `gzdoom.exe`, then select 
 - `maps/MAP01.wad` — compact UDMF arena.
 - `sprites/BAHOA0.png` — Bahon sprite.
 - `sprites/LEOOA0.png` — transformed sprite.
-- `docs/preview.png` — concept preview.
+- `dist/bahon-shooter.pk3` — built mod.
 
 ## Build the PK3
 
