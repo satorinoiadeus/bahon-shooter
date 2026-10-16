@@ -55,9 +55,20 @@ jobs:
       - name: GZDoom resource smoke test
         shell: pwsh
         run: |
-          $ErrorActionPreference = 'Continue'
+          $ErrorActionPreference = 'Stop'
           $rt = (Resolve-Path 'build/runtime').Path
-          $output = (& (Join-Path $rt 'gzdoom.exe') -config (Join-Path $rt 'ci.ini') -noautoload -nosound -iwad (Join-Path $rt 'freedoom2.wad') -file (Join-Path $rt 'bahon-shooter.pk3') -norun 2>&1 | Out-String)
+          $stdout = Join-Path $rt 'smoke-out.txt'
+          $stderr = Join-Path $rt 'smoke-err.txt'
+          $args = @(
+            '-config', ('"' + (Join-Path $rt 'ci.ini') + '"'),
+            '-noautoload', '-nosound',
+            '-iwad', ('"' + (Join-Path $rt 'freedoom2.wad') + '"'),
+            '-file', ('"' + (Join-Path $rt 'bahon-shooter.pk3') + '"')
+          )
+          $p = Start-Process -FilePath (Join-Path $rt 'gzdoom.exe') -ArgumentList $args -RedirectStandardOutput $stdout -RedirectStandardError $stderr -PassThru
+          Start-Sleep -Seconds 7
+          if (-not $p.HasExited) { Stop-Process -Id $p.Id -Force }
+          $output = ((Get-Content $stdout -Raw -ErrorAction SilentlyContinue) + "`n" + (Get-Content $stderr -Raw -ErrorAction SilentlyContinue))
           Write-Host $output
           if ($output -match 'Corrupt zlib stream') { throw 'GZDoom detected a corrupt zlib stream' }
           if ($output -match 'Script error') { throw 'GZDoom detected a script error' }
