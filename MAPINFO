@@ -1,0 +1,18 @@
+gameinfo
+{
+    title = "Bahon Shooter"
+}
+
+defaultmap
+{
+    nojump = false
+    nocrouch = false
+}
+
+map MAP01 "Bahon Arena"
+{
+    levelnum = 1
+    next = "MAP01"
+    music = "$MUSIC_RUNNIN"
+    sky1 = "SKY1", 0.0
+}
