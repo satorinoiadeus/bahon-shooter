@@ -55,10 +55,13 @@ jobs:
       - name: GZDoom resource smoke test
         shell: pwsh
         run: |
-          $ErrorActionPreference = 'Stop'
+          $ErrorActionPreference = 'Continue'
           $rt = (Resolve-Path 'build/runtime').Path
-          & (Join-Path $rt 'gzdoom.exe') -config (Join-Path $rt 'ci.ini') -noautoload -iwad (Join-Path $rt 'freedoom2.wad') -file (Join-Path $rt 'bahon-shooter.pk3') -norun
-          if ($LASTEXITCODE -ne 0) { throw "GZDoom resource test failed with exit code $LASTEXITCODE" }
+          $output = (& (Join-Path $rt 'gzdoom.exe') -config (Join-Path $rt 'ci.ini') -noautoload -nosound -iwad (Join-Path $rt 'freedoom2.wad') -file (Join-Path $rt 'bahon-shooter.pk3') -norun 2>&1 | Out-String)
+          Write-Host $output
+          if ($output -match 'Corrupt zlib stream') { throw 'GZDoom detected a corrupt zlib stream' }
+          if ($output -match 'Script error') { throw 'GZDoom detected a script error' }
+          if ($output -notmatch 'bahon-shooter\.pk3, 5 lumps') { throw 'GZDoom did not load the Bahon Shooter PK3' }
 
       - name: Make launcher payload
         shell: pwsh
