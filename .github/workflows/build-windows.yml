@@ -20,6 +20,13 @@ jobs:
         with:
           go-version: '1.23.x'
 
+      - name: Build and validate mod PK3
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          python tools/build.py
+          python -c "import zipfile; z=zipfile.ZipFile('dist/bahon-shooter.pk3'); assert z.testzip() is None; assert all(i.compress_type == zipfile.ZIP_STORED for i in z.infolist()); print('PK3 OK:', len(z.infolist()), 'stored entries')"
+
       - name: Download GZDoom and Freedoom
         shell: pwsh
         run: |
@@ -44,6 +51,19 @@ jobs:
           Get-ChildItem 'build/freedoom' -Recurse -File | Where-Object { $_.Name -match '^(COPYING|LICENSE|README)' } | ForEach-Object {
             Copy-Item $_.FullName (Join-Path 'build/runtime/licenses/freedoom' $_.Name) -Force
           }
+
+      - name: GZDoom resource smoke test
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $rt = (Resolve-Path 'build/runtime').Path
+          & (Join-Path $rt 'gzdoom.exe') -config (Join-Path $rt 'ci.ini') -noautoload -iwad (Join-Path $rt 'freedoom2.wad') -file (Join-Path $rt 'bahon-shooter.pk3') -norun
+          if ($LASTEXITCODE -ne 0) { throw "GZDoom resource test failed with exit code $LASTEXITCODE" }
+
+      - name: Make launcher payload
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
           if (Test-Path 'launcher/payload.zip') { Remove-Item 'launcher/payload.zip' -Force }
           Compress-Archive -Path 'build/runtime/*' -DestinationPath 'launcher/payload.zip' -CompressionLevel Optimal
 

@@ -33,36 +33,21 @@ func fail(err error) {
 
 func extractPayload(dst string) error {
     data, err := payloadFS.ReadFile("payload.zip")
-    if err != nil {
-        return err
-    }
+    if err != nil { return err }
 
     tmp, err := os.CreateTemp("", "bahon-payload-*.zip")
-    if err != nil {
-        return err
-    }
+    if err != nil { return err }
     tmpPath := tmp.Name()
     defer os.Remove(tmpPath)
-    if _, err := tmp.Write(data); err != nil {
-        tmp.Close()
-        return err
-    }
-    if err := tmp.Close(); err != nil {
-        return err
-    }
+    if _, err := tmp.Write(data); err != nil { tmp.Close(); return err }
+    if err := tmp.Close(); err != nil { return err }
 
     zr, err := zip.OpenReader(tmpPath)
-    if err != nil {
-        return err
-    }
+    if err != nil { return err }
     defer zr.Close()
 
-    if err := os.RemoveAll(dst); err != nil {
-        return err
-    }
-    if err := os.MkdirAll(dst, 0755); err != nil {
-        return err
-    }
+    if err := os.RemoveAll(dst); err != nil { return err }
+    if err := os.MkdirAll(dst, 0755); err != nil { return err }
 
     cleanRoot := filepath.Clean(dst) + string(os.PathSeparator)
     for _, f := range zr.File {
@@ -71,44 +56,27 @@ func extractPayload(dst string) error {
             return fmt.Errorf("invalid embedded path: %s", f.Name)
         }
         if f.FileInfo().IsDir() {
-            if err := os.MkdirAll(outPath, 0755); err != nil {
-                return err
-            }
+            if err := os.MkdirAll(outPath, 0755); err != nil { return err }
             continue
         }
-        if err := os.MkdirAll(filepath.Dir(outPath), 0755); err != nil {
-            return err
-        }
+        if err := os.MkdirAll(filepath.Dir(outPath), 0755); err != nil { return err }
         in, err := f.Open()
-        if err != nil {
-            return err
-        }
+        if err != nil { return err }
         out, err := os.OpenFile(outPath, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, f.Mode())
-        if err != nil {
-            in.Close()
-            return err
-        }
+        if err != nil { in.Close(); return err }
         _, copyErr := io.Copy(out, in)
         closeErr1 := out.Close()
         closeErr2 := in.Close()
-        if copyErr != nil {
-            return copyErr
-        }
-        if closeErr1 != nil {
-            return closeErr1
-        }
-        if closeErr2 != nil {
-            return closeErr2
-        }
+        if copyErr != nil { return copyErr }
+        if closeErr1 != nil { return closeErr1 }
+        if closeErr2 != nil { return closeErr2 }
     }
     return os.WriteFile(filepath.Join(dst, ".version"), []byte(buildVersion), 0644)
 }
 
 func main() {
     cache, err := os.UserCacheDir()
-    if err != nil {
-        fail(err)
-    }
+    if err != nil { fail(err) }
     runtimeDir := filepath.Join(cache, "BahonShooter", "runtime")
     versionFile := filepath.Join(runtimeDir, ".version")
     current, _ := os.ReadFile(versionFile)
@@ -121,18 +89,18 @@ func main() {
     gzdoom := filepath.Join(runtimeDir, "gzdoom.exe")
     iwad := filepath.Join(runtimeDir, "freedoom2.wad")
     mod := filepath.Join(runtimeDir, "bahon-shooter.pk3")
+    config := filepath.Join(runtimeDir, "bahon-shooter.ini")
 
     for _, p := range []string{gzdoom, iwad, mod} {
-        if _, err := os.Stat(p); err != nil {
-            fail(fmt.Errorf("missing game file: %s", p))
-        }
+        if _, err := os.Stat(p); err != nil { fail(fmt.Errorf("missing game file: %s", p)) }
     }
 
     cmd := exec.Command(gzdoom,
+        "-config", config,
+        "-noautoload",
         "-iwad", iwad,
         "-file", mod,
         "+map", "MAP01",
-        "-config", filepath.Join(runtimeDir, "bahon-shooter.ini"),
     )
     cmd.Dir = runtimeDir
     if err := cmd.Start(); err != nil {
