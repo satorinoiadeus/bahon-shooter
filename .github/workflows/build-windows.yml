@@ -1,0 +1,66 @@
+name: Build Windows EXE
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.23.x'
+
+      - name: Download GZDoom and Freedoom
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          New-Item -ItemType Directory -Force build | Out-Null
+          Invoke-WebRequest 'https://github.com/ZDoom/gzdoom/releases/download/g4.14.2/gzdoom-4-14-2-Windows.zip' -OutFile build/gzdoom.zip
+          Invoke-WebRequest 'https://github.com/freedoom/freedoom/releases/download/v0.13.0/freedoom-0.13.0.zip' -OutFile build/freedoom.zip
+          Expand-Archive build/gzdoom.zip -DestinationPath build/gzdoom -Force
+          Expand-Archive build/freedoom.zip -DestinationPath build/freedoom -Force
+
+      - name: Assemble embedded runtime
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          New-Item -ItemType Directory -Force build/runtime | Out-Null
+          Copy-Item 'build/gzdoom/*' 'build/runtime/' -Recurse -Force
+          $fd = Get-ChildItem 'build/freedoom' -Recurse -Filter 'freedoom2.wad' | Select-Object -First 1
+          if (-not $fd) { throw 'freedoom2.wad not found' }
+          Copy-Item $fd.FullName 'build/runtime/freedoom2.wad' -Force
+          Copy-Item 'dist/bahon-shooter.pk3' 'build/runtime/bahon-shooter.pk3' -Force
+          New-Item -ItemType Directory -Force 'build/runtime/licenses/freedoom' | Out-Null
+          Get-ChildItem 'build/freedoom' -Recurse -File | Where-Object { $_.Name -match '^(COPYING|LICENSE|README)' } | ForEach-Object {
+            Copy-Item $_.FullName (Join-Path 'build/runtime/licenses/freedoom' $_.Name) -Force
+          }
+          if (Test-Path 'launcher/payload.zip') { Remove-Item 'launcher/payload.zip' -Force }
+          Compress-Archive -Path 'build/runtime/*' -DestinationPath 'launcher/payload.zip' -CompressionLevel Optimal
+
+      - name: Build BahonShooter.exe
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          New-Item -ItemType Directory -Force release | Out-Null
+          Push-Location launcher
+          go build -trimpath -ldflags "-H=windowsgui -s -w -X main.buildVersion=${{ github.sha }}" -o ../release/BahonShooter.exe .
+          Pop-Location
+          Get-Item release/BahonShooter.exe | Format-List Name,Length,FullName
+
+      - name: Upload Windows build
+        uses: actions/upload-artifact@v4
+        with:
+          name: BahonShooter-Windows
+          path: release/BahonShooter.exe
+          if-no-files-found: error
+          compression-level: 0
